@@ -118,7 +118,14 @@ Requires JDK 21 and Maven.
 mvn test                                   # 33 tests
 mvn -q compile
 java -cp target/classes com.example.hyperion.Main
+
+# or build a single runnable jar (manifest Main-Class + bundled resources)
+mvn -q package                             # -> target/hyperion-cache.jar
+java -jar target/hyperion-cache.jar        # launches the web dashboard
 ```
+
+On Windows you can simply **double-click `Start Hyperion.bat`**, which builds the jar on
+first run (if needed) and then launches the dashboard.
 
 The test suite covers the sketch, the deque, the timer wheel, eviction fairness (a hot
 working set surviving a cold scan), TTL expiry, weight bounding, single-flight
@@ -129,6 +136,8 @@ coalescing, concurrent stress, and the diagnostics/UI surface.
 Hyperion ships with an optional, **zero-dependency** web dashboard. It is served from the
 JDK's built-in `com.sun.net.httpserver.HttpServer` with the frontend stored as static
 resources, so attaching a full UI adds **no third-party dependencies** to the library.
+
+**Live demo:** <https://hyperion-cache.vercel.app>
 
 ```bash
 mvn -q compile
@@ -153,6 +162,23 @@ The UI is backed by a small JSON API (`/api/state`, `/api/put`, `/api/get`,
 `/api/invalidate`, `/api/clear`, `/api/cleanup`, `/api/config`, `/api/simulate`) built on
 the JDK-only `Json` helper. The observability surface it reads is part of the public API:
 `HyperionCache#diagnostics()` and `HyperionCache#snapshot()`.
+
+### Static browser edition
+
+Static hosts (Vercel, GitHub Pages, Netlify) cannot run a JVM, so the `web/` directory
+contains a **faithful JavaScript port** of the cache — the same W-TinyLFU policy
+(window → probation → protected with O(1) linked-list segments), the same frequency
+sketch with halving decay, per-entry TTL, hit/miss/eviction/expiration statistics, the
+diagnostics snapshot, and the Hyperion-vs-LRU workload lab — running entirely in the
+browser. It is plain HTML/CSS/JS with **no server and no build step**, so the deployed
+demo is fully interactive rather than a screenshot.
+
+```bash
+npx serve web        # preview the static edition locally
+```
+
+`vercel.json` points Vercel's `outputDirectory` at `web/`, so a `git push` redeploys the
+live demo automatically.
 
 ## API
 
