@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hyperion · Cache Console</title>
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+</head>
+<body>
+<div class="aurora"></div>
+
+<header class="topbar">
+    <div class="brand">
+        <div class="logo">⚡</div>
+        <div>
+            <h1>Hyperion</h1>
+            <p class="tagline">W-TinyLFU · Timer Wheel · Single-Flight</p>
+        </div>
+    </div>
+    <div class="topbar-right">
+        <div class="live" id="liveBadge"><span class="dot"></span> live</div>
+        <button class="ghost" id="refreshToggle" title="Toggle auto-refresh (1s)">⏸ auto</button>
+        <button class="ghost" id="cleanupBtn" title="Force due expirations">🧹 cleanUp()</button>
+    </div>
+</header>
+
+<nav class="tabs">
+    <button class="tab active" data-tab="dashboard">Dashboard</button>
+    <button class="tab" data-tab="playground">Playground</button>
+    <button class="tab" data-tab="lab">Workload Lab</button>
+</nav>
+
+<main>
+
+<!-- ============================ DASHBOARD ============================ -->
+<section class="panel active" id="tab-dashboard">
+    <div class="grid stats">
+        <div class="card stat">
+            <span class="label">Entries</span>
+            <span class="value" id="statSize">0</span>
+            <span class="sub" id="statWeight">weight 0 / 0</span>
+            <div class="spark"><div class="spark-fill" id="sparkSize"></div></div>
+        </div>
+        <div class="card stat">
+            <span class="label">Hit rate</span>
+            <span class="value" id="statHitRate">0%</span>
+            <span class="sub" id="statHits">0 hits / 0 reqs</span>
+            <div class="spark"><div class="spark-fill hit" id="sparkHit"></div></div>
+        </div>
+        <div class="card stat">
+            <span class="label">Evictions</span>
+            <span class="value" id="statEvictions">0</span>
+            <span class="sub">admitted with room</span>
+        </div>
+        <div class="card stat">
+            <span class="label">Expirations</span>
+            <span class="value" id="statExpirations">0</span>
+            <span class="sub" id="statTimers">0 timers scheduled</span>
+        </div>
+        <div class="card stat">
+            <span class="label">Loads</span>
+            <span class="value" id="statLoads">0</span>
+            <span class="sub" id="statLoadFail">0 failed</span>
+        </div>
+        <div class="card gauge-card">
+            <svg class="gauge" viewBox="0 0 120 120">
+                <circle class="gauge-track" cx="60" cy="60" r="52"></circle>
+                <circle class="gauge-value" id="gaugeArc" cx="60" cy="60" r="52"></circle>
+            </svg>
+            <div class="gauge-label">
+                <strong id="gaugePct">0%</strong>
+                <small>hit rate</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="card segments">
+        <div class="card-head">
+            <h2>W-TinyLFU segments</h2>
+            <span class="hint">window → probation → protected</span>
+        </div>
+        <div class="segment-bars">
+            <div class="segment">
+                <div class="segment-top"><span>Window</span><span id="segWindow">0</span></div>
+                <div class="bar"><div class="bar-fill window" id="barWindow"></div></div>
+            </div>
+            <div class="segment">
+                <div class="segment-top"><span>Probation</span><span id="segProbation">0</span></div>
+                <div class="bar"><div class="bar-fill probation" id="barProbation"></div></div>
+            </div>
+            <div class="segment">
+                <div class="segment-top"><span>Protected</span><span id="segProtected">0</span></div>
+                <div class="bar"><div class="bar-fill protected" id="barProtected"></div></div>
+            </div>
+        </div>
+        <div class="segment-legend">
+            <span><i class="chip window"></i> newest entries on trial</span>
+            <span><i class="chip probation"></i> admission gate</span>
+            <span><i class="chip protected"></i> frequently used</span>
+        </div>
+    </div>
+
+    <div class="card entries">
+        <div class="card-head">
+            <h2>Live entries</h2>
+            <span class="hint" id="entryCount">0 shown</span>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                <tr><th>Key</th><th>Value</th><th>Segment</th><th>Weight</th><th>TTL</th></tr>
+                </thead>
+                <tbody id="entriesBody"></tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<!-- ============================ PLAYGROUND ============================ -->
+<section class="panel" id="tab-playground">
+    <div class="grid two">
+        <div class="card">
+            <div class="card-head"><h2>put(key, value)</h2></div>
+            <label>Key<input id="putKey" placeholder="session:carol" autocomplete="off"></label>
+            <label>Value<input id="putValue" placeholder="any string" autocomplete="off"></label>
+            <label>TTL (ms, optional)<input id="putTtl" type="number" min="0" placeholder="0 = default"></label>
+            <div class="row">
+                <button class="primary" id="putBtn">put →</button>
+                <button class="ghost" id="putRandom">random key</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-head"><h2>getIfPresent(key)</h2></div>
+            <label>Key<input id="getKey" placeholder="session:carol" autocomplete="off"></label>
+            <div class="row">
+                <button class="primary" id="getBtn">get →</button>
+                <button class="ghost" id="invalidateBtn">invalidate</button>
+            </div>
+            <div class="result" id="getResult">No lookup yet.</div>
+        </div>
+
+        <div class="card">
+            <div class="card-head"><h2>Capacity</h2></div>
+            <label>maximumSize<input id="cfgSize" type="number" min="1" value="1000"></label>
+            <label>default TTL (ms, 0 = none)<input id="cfgTtl" type="number" min="0" value="0"></label>
+            <div class="row">
+                <button class="primary" id="cfgBtn">apply (rebuilds cache)</button>
+            </div>
+            <p class="hint">Changing capacity builds a fresh cache — eviction policies are size-specific.</p>
+        </div>
+
+        <div class="card danger">
+            <div class="card-head"><h2>Danger zone</h2></div>
+            <p class="hint">Wipe every entry. Stats reset on rebuild only.</p>
+            <div class="row">
+                <button class="danger-btn" id="clearBtn">invalidateAll()</button>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============================ LAB ============================ -->
+<section class="panel" id="tab-lab">
+    <div class="card">
+        <div class="card-head">
+            <h2>Workload Lab</h2>
+            <span class="hint">Hyperion (W-TinyLFU) vs a naive LRU</span>
+        </div>
+        <p class="lab-blurb" id="labBlurb">Pick a workload and watch the admission policy do the work.</p>
+        <div class="row wrap">
+            <button class="seg-btn active" data-scenario="scan">Scan resistance</button>
+            <button class="seg-btn" data-scenario="zipf">Zipfian hits</button>
+            <label class="inline">capacity <input id="labCapacity" type="number" min="10" max="100000" value="1000"></label>
+            <button class="primary" id="runLab">▶ run benchmark</button>
+        </div>
+    </div>
+
+    <div class="grid two" id="labResults">
+        <div class="card result-card" id="labCard0">
+            <div class="card-head"><h2 id="labName0">—</h2></div>
+            <div class="big" id="labHit0">—</div>
+            <div class="big-label" id="labLabel0">lookup hit rate</div>
+            <div class="bar"><div class="bar-fill protected" id="labBar0"></div></div>
+            <div class="result" id="labDetail0"></div>
+        </div>
+        <div class="card result-card" id="labCard1">
+            <div class="card-head"><h2 id="labName1">—</h2></div>
+            <div class="big" id="labHit1">—</div>
+            <div class="big-label" id="labLabel1">lookup hit rate</div>
+            <div class="bar"><div class="bar-fill probation" id="labBar1"></div></div>
+            <div class="result" id="labDetail1"></div>
+        </div>
+    </div>
+</section>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<footer>
+    <span>Hyperion cache console · zero dependencies · JDK 21</span>
+</footer>
+
+<script src="/app.js"></script>
+</body>
+</html>

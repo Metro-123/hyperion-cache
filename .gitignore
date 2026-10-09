@@ -1,0 +1,21 @@
+# Build output
+target/
+*.class
+
+# Test/tooling caches
+.pytest_cache/
+__pycache__/
+
+# Editors
+.idea/
+*.iml
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node (for local static preview only)
+node_modules/
+.vercel
